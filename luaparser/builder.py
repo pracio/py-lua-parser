@@ -1,20 +1,34 @@
-import ast
+# -*-coding:utf8-*-
+
 import re
-
+import ast
+from enum import Enum
+from typing import List, Tuple, Literal, Optional
 from antlr4 import InputStream, CommonTokenStream
-
-from luaparser.astnodes import *
-from luaparser.parser.LuaLexer import LuaLexer
-from typing import List, Tuple, Literal
 from antlr4.Token import Token
+from luaparser.parser.LuaLexer import LuaLexer
+from luaparser.astnodes import (Comment, Comments, CommonToken, Chunk,
+                                Block, Statement, Do, Break, SemiColon,
+                                Return, Assign, Expression, Node, Call,
+                                Invoke, Index, Name, IndexNotation,
+                                While, Repeat, LocalAssign, LocalFunction,
+                                Goto, If, ElseIf, Fornum, Forin,
+                                Method, Function, Varargs, AttributeName,
+                                Label, OrLoOp, AndLoOp, LessOrEqThanOp,
+                                GreaterOrEqThanOp, LessThanOp, GreaterThanOp,
+                                NotEqToOp, EqToOp, Concat, AddOp, SubOp,
+                                MultOp, FloatDivOp, ModOp, FloorDivOp,
+                                BAndOp, BOrOp, BXorOp, BShiftROp, BShiftLOp,
+                                UMinusOp, ULengthOP, ULNotOp, UBNotOp,
+                                ExpoOp, Number, Nil, TrueExpr, FalseExpr,
+                                StringDelimiter, String, AnonymousFunction,
+                                Table, Field)
 
 
 class SyntaxException(Exception):
     def __init__(self, user_msg, token=None):
         if token:
-            message = (
-                    "(" + str(token.line) + "," + str(token.start) + "): Error: " + user_msg
-            )
+            message = f"({token.line},{token.start}): Error: {user_msg}"
         else:
             message = "Error: " + user_msg
         super().__init__(message)
@@ -97,76 +111,18 @@ class Tokens:
     SPACE = 61
     NEWLINE = 62
     SHEBANG = 63
-    LongBracket = 64
 
 
-LITERAL_NAMES = [
-    "<INVALID>",
-    "'and'",
-    "'break'",
-    "'do'",
-    "'else'",
-    "'elseif'",
-    "'end'",
-    "'false'",
-    "'for'",
-    "'function'",
-    "'goto'",
-    "'if'",
-    "'in'",
-    "'local'",
-    "'nil'",
-    "'not'",
-    "'or'",
-    "'repeat'",
-    "'return'",
-    "'then'",
-    "'true'",
-    "'until'",
-    "'while'",
-    "'+'",
-    "'-'",
-    "'*'",
-    "'/'",
-    "'//'",
-    "'%'",
-    "'^'",
-    "'#'",
-    "'=='",
-    "'~='",
-    "'<='",
-    "'>='",
-    "'<'",
-    "'>'",
-    "'='",
-    "'&'",
-    "'|'",
-    "'~'",
-    "'>>'",
-    "'<<'",
-    "'('",
-    "')'",
-    "'{'",
-    "'}'",
-    "'['",
-    "']'",
-    "'::'",
-    "':'",
-    "','",
-    "'...'",
-    "'..'",
-    "'.'",
-    "';'",
-    "NAME",
-    "NUMBER",
-    "STRING",
-    "COMMENT",
-    "LINE_COMMENT",
-    "SPACE",
-    "NEWLINE",
-    "SHEBANG",
-    "LONG_BRACKET",
-]
+LITERAL_NAMES = ["<INVALID>", "'and'", "'break'", "'do'", "'else'", "'elseif'",
+                 "'end'", "'false'", "'for'", "'function'", "'goto'", "'if'",
+                 "'in'", "'local'", "'nil'", "'not'", "'or'", "'repeat'",
+                 "'return'", "'then'", "'true'", "'until'", "'while'",
+                 "'+'", "'-'", "'*'", "'/'", "'//'", "'%'", "'^'", "'#'",
+                 "'=='", "'~='", "'<='", "'>='", "'<'", "'>'", "'='", "'&'",
+                 "'|'", "'~'", "'>>'", "'<<'", "'('", "')'", "'{'", "'}'",
+                 "'['", "']'", "'::'", "':'", "','", "'...'", "'..'", "'.'",
+                 "';'", "NAME", "NUMBER", "STRING", "COMMENT", "LINE_COMMENT",
+                 "SPACE", "NEWLINE", "SHEBANG"]
 
 
 def _listify(obj):
@@ -693,7 +649,8 @@ class Builder:
             tokens = self._stream.getHiddenTokensToLeft(self._stream.index)
             if tokens:
                 for t in tokens:
-                    if t.type == Tokens.NEWLINE and not self.prev_is(Tokens.SEMCOL):
+                    if t.type == Tokens.NEWLINE and \
+                       not self.prev_is(Tokens.SEMCOL):
                         raise SyntaxException(
                             "Ambiguous syntax detected", self._stream.LT(-1)
                         )
@@ -791,7 +748,7 @@ class Builder:
         self._expected = []
         start_token = self.next_is_rc(Tokens.LOCAL)
         if start_token:
-            targets = self.parse_name_list()
+            targets = self.parse_attr_name_list()
             if targets:
                 values = []
                 self.save()
@@ -816,7 +773,8 @@ class Builder:
 
             self.save()
 
-            if self.next_is_rc(Tokens.FUNCTION) and self.next_is_rc(Tokens.NAME):
+            if self.next_is_rc(Tokens.FUNCTION) and \
+               self.next_is_rc(Tokens.NAME):
                 name = Name(
                     self.text,
                     first_token=self._LT,
@@ -888,7 +846,8 @@ class Builder:
                     body = self.parse_block()
                     if body:
                         self.success()
-                        return ElseIf(test, body, None)  # orelse will be set in parent
+                        # orelse will be set in parent
+                        return ElseIf(test, body, None)
         return self.failure()
 
     def parse_else_stat(self) -> Block or bool:
@@ -954,7 +913,8 @@ class Builder:
             names = self.parse_names()
             if names:
                 self.save()
-                if self.next_is_rc(Tokens.COL) and self.next_is_rc(Tokens.NAME):
+                if self.next_is_rc(Tokens.COL) and\
+                   self.next_is_rc(Tokens.NAME):
                     name = Name(
                         self.text,
                         first_token=self._LT,
@@ -1003,7 +963,8 @@ class Builder:
             )
             while True:
                 self.save()
-                if self.next_is_rc(Tokens.DOT) and self.next_is_rc(Tokens.NAME):
+                if self.next_is_rc(Tokens.DOT) and\
+                   self.next_is_rc(Tokens.NAME):
                     self.success()
                     child = Index(
                         Name(
@@ -1029,7 +990,8 @@ class Builder:
             self.handle_hidden_right()  # render hidden after new level
             args = self.parse_param_list()
             if args is not None:  # may be an empty table
-                if self.next_is_rc(Tokens.CPAR, False):  # do not render right hidden
+                if self.next_is_rc(Tokens.CPAR, False):
+                    # do not render right hidden
                     self.handle_hidden_right()  # render hidden after new level
                     body = self.parse_block()
                     if body:
@@ -1049,7 +1011,8 @@ class Builder:
         param_list: List[Expression] = self.parse_name_list()
         if param_list:
             self.save()
-            if self.next_is_rc(Tokens.COMMA) and self.next_is_rc(Tokens.VARARGS):
+            if self.next_is_rc(Tokens.COMMA) and \
+               self.next_is_rc(Tokens.VARARGS):
                 self.success()
                 param_list.append(Varargs())
                 return param_list
@@ -1065,6 +1028,61 @@ class Builder:
         self.success()
         return []
 
+    def parse_attr_name(self) -> Name or bool:
+        self.save()
+        if self.next_is(Tokens.NAME) and self.next_is_rc(Tokens.NAME):
+            name_text = self.text
+            attribute = None
+            if self.next_is(Tokens.LT) and self.next_is_rc(Tokens.LT):
+                if self.next_is(Tokens.NAME) and self.next_is_rc(Tokens.NAME):
+                    attribute = self.text
+                    if self.next_is(Tokens.GT) and self.next_is_rc(Tokens.GT):
+                        pass
+                    else:
+                        attribute = None
+                        return self.failure()
+                else:
+                    return self.failure()
+            if attribute is None:
+                name = Name(
+                    name_text,
+                    first_token=self._LT,
+                    last_token=self._LT,
+                )
+                self.success()
+                return name
+            else:
+                attr_name = AttributeName(attribute,
+                                          identifier=name_text,
+                                          first_token=self._LT,
+                                          last_token=self._LT)
+                self.success()
+                return attr_name
+        return self.failure()
+
+    def parse_attr_name_list(self) -> List[Name] or bool:
+        self.save()
+        names: List[Name] = []
+        name = self.parse_attr_name()
+        if not name:
+            return self.failure()
+        names.append(name)
+        while True:
+            self.save()
+            if self.next_is(Tokens.COMMA) and self.next_is_rc(Tokens.COMMA):
+                sub = self.parse_attr_name()
+                if sub:
+                    names.append(sub)
+                    self.success()
+                else:
+                    self.failure()
+                    break
+            else:
+                self.failure()
+                break
+        self.success()
+        return names
+
     def parse_name_list(self) -> List[Name] or bool:
         self.save()
         names: List[Name] = []
@@ -1078,7 +1096,8 @@ class Builder:
             )
             while True:
                 self.save()
-                if self.next_is_rc(Tokens.COMMA) and self.next_is_rc(Tokens.NAME):
+                if self.next_is_rc(Tokens.COMMA) and \
+                   self.next_is_rc(Tokens.NAME):
                     names.append(
                         Name(
                             self.text,
@@ -1262,7 +1281,8 @@ class Builder:
         if left:
             while True:
                 self.save()
-                if self.next_in_rc([Tokens.MULT, Tokens.DIV, Tokens.MOD, Tokens.FLOOR]):
+                if self.next_in_rc([Tokens.MULT, Tokens.DIV,
+                                    Tokens.MOD, Tokens.FLOOR]):
                     op = self.type
                     right = self.parse_bitwise_expr()
                     if right:
@@ -1401,14 +1421,12 @@ class Builder:
             return atom
         if self.next_is(Tokens.VARARGS) and self.next_is_rc(Tokens.VARARGS):
             return Varargs()
-
-
         if self.next_is(Tokens.NUMBER) and self.next_is_rc(Tokens.NUMBER):
             # TODO: optimize
             # using python number eval to parse lua number
             try:
                 number = ast.literal_eval(self.text)
-            except:
+            except ValueError:
                 # exception occurs with leading zero number: 002
                 number = float(self.text)
             return Number(
@@ -1534,7 +1552,8 @@ class Builder:
                     if value:
                         self.success()
                         return (
-                            Field(key, value, comments=comments, between_brackets=True),
+                            Field(key, value, comments=comments,
+                                  between_brackets=True),
                             comments,
                         )
 

@@ -1,257 +1,86 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2014 by Bart Kiers
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Project      : lua-parser; a Lua 5.2 grammar/parser
- * Developed by : Bart Kiers, bart@big-o.nl
- *                Eliott Dumeix, (update to antlr4 + Lua 5.3 grammar)
- */
+BSD License
+
+Copyright (c) 2013, Kazunori Sakamoto
+Copyright (c) 2016, Alexander Alexeev
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the NAME of Rainer Schuster nor the NAMEs of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+This grammar file derived from:
+
+    Luau 0.537 Grammar Documentation
+    https://github.com/Roblox/luau/blob/0.537/docs/_pages/grammar.md
+
+    Lua 5.4 Reference Manual
+    http://www.lua.org/manual/5.4/manual.html
+
+    Lua 5.3 Reference Manual
+    http://www.lua.org/manual/5.3/manual.html
+
+    Lua 5.2 Reference Manual
+    http://www.lua.org/manual/5.2/manual.html
+
+    Lua 5.1 grammar written by Nicolai Mainiero
+    http://www.antlr3.org/grammar/1178608849736/Lua.g
+
+Tested by Kazunori Sakamoto with Test suite for Lua 5.2 (http://www.lua.org/tests/5.2/)
+
+Tested by Alexander Alexeev with Test suite for Lua 5.3 http://www.lua.org/tests/lua-5.3.2-tests.tar.gz
+
+Tested by Matt Hargett with:
+    - Test suite for Lua 5.4.4: http://www.lua.org/tests/lua-5.4.4-tests.tar.gz
+    - Test suite for Selene Lua lint tool v0.20.0: https://github.com/Kampfkarren/selene/tree/0.20.0/selene-lib/tests
+    - Test suite for full-moon Lua parsing library v0.15.1: https://github.com/Kampfkarren/full-moon/tree/main/full-moon/tests
+    - Test suite for IntelliJ-Luanalysis IDE plug-in v1.3.0: https://github.com/Benjamin-Dobell/IntelliJ-Luanalysis/tree/v1.3.0/src/test
+    - Test suite for StyLua formatting tool v.14.1: https://github.com/JohnnyMorganz/StyLua/tree/v0.14.1/tests
+    - Entire codebase for luvit: https://github.com/luvit/luvit/
+    - Entire codebase for lit: https://github.com/luvit/lit/
+    - Entire codebase and test suite for neovim v0.7.2: https://github.com/neovim/neovim/tree/v0.7.2
+    - Entire codebase for World of Warcraft Interface: https://github.com/tomrus88/BlizzardInterfaceCode
+    - Benchmarks and conformance test suite for Luau 0.537: https://github.com/Roblox/luau/tree/0.537
+*/
+
 grammar Lua;
 
-
-
-//////////////////////////////// parser rules ////////////////////////////////
-
-chunk
-  : block EOF
-  ;
-
-block
-  : stat* ret_stat?
-  ;
-
-stat
-  : assignment
-  | var[False]
-  | do_block
-  | while_stat
-  | repeat_stat
-  | local
-  | goto_stat
-  | if_stat
-  | for_stat
-  | function
-  | label
-  | BREAK
-  | SEMCOL
-  ;
-
-do_block
-  : DO block END
-  ;
-
-while_stat
-  : WHILE expr do_block
-  ;
-
-repeat_stat
-  : REPEAT block UNTIL expr
-  ;
-
-assignment
-  : var_list ASSIGN expr_list // in every 'var' in 'var_list', the last must be an 'index', not a 'call'
-  ;
-
-local
-  : LOCAL
-  ( name_list (ASSIGN expr_list)?
-  | FUNCTION NAME func_body)
-  ;
-
-goto_stat
-  : GOTO NAME
-  ;
-
-if_stat
-  : IF expr THEN block elseif_stat* else_stat? END
-  ;
-
-elseif_stat
-  : ELSEIF expr THEN block
-  ;
-
-else_stat
-  : ELSE block
-  ;
-
-for_stat
-  : FOR
-  ( NAME ASSIGN expr COMMA expr (COMMA expr)? do_block
-  | name_list IN expr_list do_block
-  )
-  ;
-
-function
-  : FUNCTION names (COL NAME func_body | func_body)
-  ;
-
-names
-  : NAME (DOT NAME)*
-  ;
-
-function_literal
-  : FUNCTION func_body
-  ;
-
-func_body
-  : OPAR param_list CPAR block END
-  ;
-
-param_list
-  : name_list (COMMA VARARGS  )?
-  | VARARGS?
-  ;
-
-ret_stat
-  : RETURN expr_list? SEMCOL?
-  ;
-
-expr
-  : or_expr
-  ;
-
-or_expr
-  : and_expr (OR and_expr)*
-  ;
-
-and_expr
-  : rel_expr (AND rel_expr)*
-  ;
-
-rel_expr
-  : concat_expr ((LT | GT | LTEQ | GTEQ | NEQ | EQ) concat_expr)?
-  ;
-
-concat_expr
-  : add_expr (CONCAT add_expr)*
-  ;
-
-add_expr
-  : mult_expr ((ADD | MINUS) mult_expr)*
-  ;
-
-mult_expr
-  : bitwise_expr ((MULT | DIV | MOD | FLOOR) bitwise_expr)*
-  ;
-
-bitwise_expr
-  : unary_expr ((BITAND | BITOR | BITNOT | BITRSHIFT | BITRLEFT) unary_expr)*
-  ;
-
-unary_expr
-  : MINUS unary_expr
-  | LENGTH pow_expr
-  | NOT unary_expr
-  | BITNOT unary_expr
-  | pow_expr
-  ;
-
-// right associative
-pow_expr
-  : atom (POW atom)*
-  ;
-
-atom
-  : var[False]
-  | function_literal
-  | table_constructor
-  | VARARGS
-  | NUMBER
-  | STRING
-  | NIL
-  | TRUE
-  | FALSE
-  ;
-
-var[bool assign]
-  : callee[assign] tail*
-  ;
-
-callee[bool assign]
-  : OPAR expr CPAR | NAME
-  ;
-
-tail
-  : DOT NAME                      # tail_dot_index
-  | OBRACK expr CBRACK            # tail_brack_index
-  | COL NAME OPAR expr_list? CPAR # tail_invoke
-  | COL NAME table_constructor    # tail_invoke_table
-  | COL NAME STRING               # tail_invoke_str
-  | OPAR expr_list? CPAR          # tail_call
-  | table_constructor             # tail_table
-  | STRING                        # tail_string
-  ;
-
-table_constructor
-  : OBRACE field_list? CBRACE
-  ;
-
-field_list
-  : field (field_sep field)* field_sep?
-  ;
-
-field
-  : OBRACK expr CBRACK ASSIGN expr
-  | NAME ASSIGN expr
-  | expr
-  ;
-
-field_sep
-  : COMMA
-  | SEMCOL
-  ;
-
-label
-  : COLCOL NAME COLCOL
-  ;
-
-var_list
-  : var[True] (COMMA var[True])*
-  ;
-
-expr_list
-  : expr (COMMA expr)*
-  ;
-
-name_list
-  : NAME (COMMA NAME)*
-  ;
-
-//////////////////////////////// lexer rules ////////////////////////////////
+// options{
+//     tokenVocab = V;
+// }
 
 AND       : 'and';
 BREAK     : 'break';
 DO        : 'do';
-ELSE      : 'else';
+ELSETOK   : 'else';
 ELSEIF    : 'elseif';
 END       : 'end';
 FALSE     : 'false';
 FOR       : 'for';
 FUNCTION  : 'function';
 GOTO      : 'goto';
-IF        : 'if';
+IFTOK     : 'if';
 IN        : 'in';
 LOCAL     : 'local';
 NIL       : 'nil';
@@ -297,22 +126,247 @@ CONCAT    : '..';
 DOT       : '.';
 SEMCOL     : ';';
 
+chunk
+    : block EOF
+    ;
+
+block
+    : stat* laststat?
+    ;
+
+stat
+    : SEMCOL
+    | varlist ASSIGN explist
+    | functioncall
+    | label
+    | BREAK
+    | GOTO NAME
+    | DO block END
+    | WHILE exp DO block END
+    | REPEAT block UNTIL exp
+    | IFTOK exp THEN block (ELSEIF exp THEN block)* (ELSETOK block)? END
+    | FOR NAME ASSIGN exp COMMA exp (COMMA exp)? DO block END
+    | FOR namelist IN explist DO block END
+    | FUNCTION funcname funcbody
+    | LOCAL FUNCTION NAME funcbody
+    | LOCAL attnamelist (ASSIGN explist)?
+    ;
+
+attnamelist
+    : NAME attrib (COMMA NAME attrib)*
+    ;
+
+attrib
+    : (LT NAME GT)?
+    ;
+
+laststat
+    : RETURN explist? | BREAK | SEMCOL?
+    ;
+
+label
+    : COLCOL NAME COLCOL
+    ;
+
+funcname
+    : NAME (DOT NAME)* (COL NAME)?
+    ;
+
+varlist
+    : var (COMMA var)*
+    ;
+
+namelist
+    : NAME (COMMA NAME)*
+    ;
+
+explist
+    : (exp COMMA)* exp
+    ;
+
+exp
+    : NIL | FALSE | TRUE
+    | NUMBER
+    | STRING
+    | VARARGS
+    | functiondef
+    | prefixexp
+    | tableconstructor
+    | <assoc=right> exp operatorPower exp
+    | operatorUnary exp
+    | exp operatorMulDivMod exp
+    | exp operatorAddSub exp
+    | <assoc=right> exp operatorStrcat exp
+    | exp operatorComparison exp
+    | exp operatorAnd exp
+    | exp operatorOr exp
+    | exp operatorBitwise exp
+    ;
+
+prefixexp
+    : varOrExp nameAndArgs*
+    ;
+
+functioncall
+    : varOrExp nameAndArgs+
+    ;
+
+varOrExp
+    : var | OPAR exp CPAR
+    ;
+
+var
+    : (NAME | OPAR exp CPAR varSuffix) varSuffix*
+    ;
+
+varSuffix
+    : nameAndArgs* (OBRACK exp CBRACK | DOT NAME)
+    ;
+
+nameAndArgs
+    : (COL NAME)? args
+    ;
+
+args
+    : OPAR explist? CPAR | tableconstructor | STRING
+    ;
+
+functiondef
+    : FUNCTION funcbody
+    ;
+
+funcbody
+    : OPAR parlist? CPAR block END
+    ;
+
+parlist
+    : namelist (COMMA VARARGS)? | VARARGS
+    ;
+
+tableconstructor
+    : OBRACE fieldlist? CBRACE
+    ;
+
+fieldlist
+    : field (fieldsep field)* fieldsep?
+    ;
+
+field
+    : OBRACK exp CBRACK ASSIGN exp | NAME ASSIGN exp | exp
+    ;
+
+fieldsep
+    : COMMA | SEMCOL
+    ;
+
+operatorOr
+	: OR;
+
+operatorAnd
+	: AND;
+
+operatorComparison
+	: LT | GT | LTEQ | GTEQ | NEQ | EQ;
+
+operatorStrcat
+	: CONCAT;
+
+operatorAddSub
+	: ADD | MINUS;
+
+operatorMulDivMod
+	: MULT | DIV | MOD | FLOOR;
+
+operatorBitwise
+	: BITAND | BITOR | BITNOT | BITRLEFT | BITRSHIFT;
+
+operatorUnary
+    : NOT | LENGTH | MINUS | BITNOT;
+
+operatorPower
+    : POW;
+
+
+// LEXER
+
+
+
 NAME
-  : (Letter | '_') (Letter | '_' | Digit)*
-  ;
+    : [a-zA-Z_][a-zA-Z_0-9]*
+    ;
 
 NUMBER
-  : (Digit+ ('.' Digit*)? Exponent? | '.' Digit+ Exponent?)
-  | '0' ('x' | 'X') HexDigits ('.' HexDigits?)? BinaryExponent?
-  ;
+    : Digit+ 
+    | '0' [xX] HexDigit+ 
+    | Digit+ '.' Digit* ExponentPart?
+    | '.' Digit+ ExponentPart?
+    | Digit+ ExponentPart 
+    | '0' [xX] HexDigit+ '.' HexDigit* HexExponentPart?
+    | '0' [xX] '.' HexDigit+ HexExponentPart?
+    | '0' [xX] HexDigit+ HexExponentPart
+    ;
 
 STRING
-  : '"'  (EscapeSequence | ~('\\' | '"'  | '\r' | '\n'))* '"'
-  | '\'' (EscapeSequence | ~('\\' | '\'' | '\r' | '\n'))* '\''
-  | LongBracket
-  ;
+    : '"' ( EscapeSequence | ~('\\'|'"') )* '"' | '\'' ( EscapeSequence | ~('\''|'\\') )* '\'' | '[' NESTED_STR ']'
+    ;
 
-//////////////////////////////// lexer rules to hide ////////////////////////////////
+fragment
+NESTED_STR
+    : '=' NESTED_STR '='
+    | '[' .*? ']'
+    ;
+
+fragment
+ExponentPart
+    : [eE] [+-]? Digit+
+    ;
+
+fragment
+HexExponentPart
+    : [pP] [+-]? Digit+
+    ;
+
+fragment
+EscapeSequence
+    : '\\' [abfnrtvz"'|$#\\]   // World of Warcraft Lua additionally escapes |$# 
+    | '\\' '\r'? '\n'
+    | DecimalEscape
+    | HexEscape
+    | UtfEscape
+    ;
+
+fragment
+DecimalEscape
+    : '\\' Digit
+    | '\\' Digit Digit
+    | '\\' [0-2] Digit Digit
+    ;
+
+fragment
+HexEscape
+    : '\\' 'x' HexDigit HexDigit
+    ;
+
+fragment
+UtfEscape
+    : '\\' 'u{' HexDigit+ '}'
+    ;
+
+fragment
+Digit
+    : [0-9]
+    ;
+
+fragment
+HexDigit
+    : [0-9a-fA-F]
+    ;
+
+fragment
+SingleLineInputCharacter
+    : ~[\r\n\u0085\u2028\u2029]
+    ;
+
 COMMENT
     : '--[' NESTED_STR ']' -> channel(HIDDEN)
     ;
@@ -336,56 +390,5 @@ NEWLINE
   ;
 
 SHEBANG
-  : '#' '!' ~('\n'|'\r')* -> channel(HIDDEN)
-  ;
-
-//////////////////////////////// fragment lexer rules ////////////////////////////////
-fragment Letter
-  : 'a'..'z'
-  | 'A'..'Z'
-  ;
-
-fragment Digit
-  : '0'..'9'
-  ;
-
-fragment HexDigit
-  : Digit
-  | 'a'..'f'
-  | 'A'..'F'
-  ;
-
-fragment HexDigits
-  : HexDigit+
-  ;
-
-fragment Exponent
-  : ('e' | 'E') ('-' | '+')? Digit+
-  ;
-
-fragment BinaryExponent
-  : ('p' | 'P') ('-' | '+')? Digit+
-  ;
-
-fragment EscapeSequence
-  : '\\'
-  ( ('a' | 'b' | 'f' | 'n' | 'r' | 't' | 'v' | '\\' | '"' | '\'' | 'z' | LineBreak)
-  | 'u{' HexDigits '}'
-  | Digit (Digit Digit?)?
-  | 'x' HexDigit HexDigit
-  )
-  ;
-
-fragment LineBreak
-  : '\r'? '\n'
-  | '\r'
-  ;
-
-fragment NESTED_STR
-  : '=' NESTED_STR '='
-  | '[' .*? ']'
-  ;
-
-LongBracket
-  : '[' NESTED_STR ']'
-  ;
+    : '#' '!' SingleLineInputCharacter* -> channel(HIDDEN)
+    ;

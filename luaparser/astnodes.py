@@ -183,11 +183,6 @@ class Chunk(Node):
         return to_pretty_str(self)
 
 
-"""
-Left Hand Side expression.
-"""
-
-
 class Lhs(Expression):
     """Define a Lua Left Hand Side expression."""
 
@@ -199,9 +194,16 @@ class Name(Lhs):
         id (`string`): Id.
     """
 
-    def __init__(self, identifier: str, **kwargs):
-        super(Name, self).__init__("Name", **kwargs)
+    def __init__(self, identifier: str, name="Name", **kwargs):
+        super().__init__(name, **kwargs)
         self.id: str = identifier
+
+
+class AttributeName(Name):
+
+    def __init__(self, attribute: str, identifier: str, **kwargs):
+        super().__init__(identifier, name="AttributeName", **kwargs)
+        self.attribute: str = attribute
 
 
 class IndexNotation(Enum):
@@ -228,11 +230,6 @@ class Index(Lhs):
         self.idx: Name = idx
         self.value: Expression = value
         self.notation: IndexNotation = notation
-
-
-""" ----------------------------------------------------------------------- """
-""" Statements                                                              """
-""" ----------------------------------------------------------------------- """
 
 
 class Assign(Statement):
@@ -308,8 +305,10 @@ class ElseIf(Statement):
 
     Attributes:
         test (`Node`): Expression to test.
-        body (`list<Statement>`): List of statements to execute if test is true.
-        orelse (`list<Statement> or ElseIf`): List of statements or ElseIf if test if false.
+        body (`list<Statement>`): List of statements to execute if
+        test is true.
+        orelse (`list<Statement> or ElseIf`): List of statements or
+        ElseIf if test if false.
     """
 
     def __init__(self, test: Node, body: Block, orelse, **kwargs):
@@ -325,7 +324,8 @@ class If(Statement):
     Attributes:
         test (`Node`): Expression to test.
         body (`Block`): List of statements to execute if test is true.
-        orelse (`list<Statement> or ElseIf`): List of statements or ElseIf if test if false.
+        orelse (`list<Statement> or ElseIf`): List of statements or
+        ElseIf if test if false.
     """
 
     def __init__(
@@ -425,11 +425,12 @@ class Forin(Statement):
     """
 
     def __init__(
-        self, body: Block, iter: List[Expression], targets: List[Name], **kwargs
+        self, body: Block, iterator: List[Expression], targets: List[Name],
+        **kwargs
     ):
         super(Forin, self).__init__("Forin", **kwargs)
         self.body: Block = body
-        self.iter: List[Expression] = iter
+        self.iter: List[Expression] = iterator
         self.targets: List[Name] = targets
 
 
@@ -457,7 +458,8 @@ class Invoke(Statement):
     """
 
     def __init__(
-        self, source: Expression, func: Expression, args: List[Expression], **kwargs
+        self, source: Expression, func: Expression, args: List[Expression],
+        **kwargs
     ):
         super(Invoke, self).__init__("Invoke", **kwargs)
         self.source: Expression = source
@@ -474,7 +476,8 @@ class Function(Statement):
         body (`Block`): List of statements to execute.
     """
 
-    def __init__(self, name: Expression, args: List[Expression], body: Block, **kwargs):
+    def __init__(self, name: Expression, args: List[Expression], body: Block,
+                 **kwargs):
         super(Function, self).__init__("Function", **kwargs)
         self.name: Expression = name
         self.args: List[Expression] = args
@@ -490,7 +493,8 @@ class LocalFunction(Statement):
         body (`list<Statement>`): List of statements to execute.
     """
 
-    def __init__(self, name: Expression, args: List[Expression], body: Block, **kwargs):
+    def __init__(self, name: Expression, args: List[Expression], body: Block,
+                 **kwargs):
         super(LocalFunction, self).__init__("LocalFunction", **kwargs)
         self.name: Expression = name
         self.args: List[Expression] = args
@@ -522,17 +526,9 @@ class Method(Statement):
         self.body: Block = body
 
 
-""" ----------------------------------------------------------------------- """
-""" Lua Expression                                                          """
-""" ----------------------------------------------------------------------- """
-
-""" ----------------------------------------------------------------------- """
-""" Types and values                                                        """
-""" ----------------------------------------------------------------------- """
-
-
 class Nil(Expression):
-    """Define the Lua nil expression."""
+    """Define the Lua nil expression.
+    """
 
     def __init__(self, **kwargs):
         super(Nil, self).__init__("Nil", **kwargs)
@@ -653,11 +649,6 @@ class AnonymousFunction(Expression):
         self.body: Block = body
 
 
-""" ----------------------------------------------------------------------- """
-""" Operators                                                               """
-""" ----------------------------------------------------------------------- """
-
-
 class Op(Expression):
     """Base class for Lua operators."""
 
@@ -674,11 +665,6 @@ class BinaryOp(Op):
         super(BinaryOp, self).__init__(name, **kwargs)
         self.left: Expression = left
         self.right: Expression = right
-
-
-""" ----------------------------------------------------------------------- """
-""" 3.4.1 – Arithmetic Operators                                            """
-""" ----------------------------------------------------------------------- """
 
 
 class AriOp(BinaryOp):
@@ -769,13 +755,9 @@ class ExpoOp(AriOp):
         super().__init__("ExpoOp", left, right, **kwargs)
 
 
-""" ----------------------------------------------------------------------- """
-""" 3.4.2 – Bitwise Operators                                               """
-""" ----------------------------------------------------------------------- """
-
-
 class BitOp(BinaryOp):
-    """Base class for bitwise Operators."""
+    """Base class for bitwise Operators.
+    """
 
 
 class BAndOp(BitOp):
@@ -836,11 +818,6 @@ class BShiftLOp(BitOp):
 
     def __init__(self, left: Expression, right: Expression, **kwargs):
         super().__init__("BShiftLOp", left, right, **kwargs)
-
-
-""" ----------------------------------------------------------------------- """
-""" 3.4.4 – Relational Operators                                            """
-""" ----------------------------------------------------------------------- """
 
 
 class RelOp(BinaryOp):
@@ -919,11 +896,6 @@ class NotEqToOp(RelOp):
         super().__init__("RNotEqOp", left, right, **kwargs)
 
 
-""" ----------------------------------------------------------------------- """
-""" 3.4.5 – Logical Operators                                               """
-""" ----------------------------------------------------------------------- """
-
-
 class LoOp(BinaryOp):
     """Base class for logical operators."""
 
@@ -952,10 +924,6 @@ class OrLoOp(LoOp):
         super().__init__("LOrOp", left, right, **kwargs)
 
 
-""" ----------------------------------------------------------------------- """
-""" 3.4.6 Concat operators                                                  """
-""" ----------------------------------------------------------------------- """
-
 
 class Concat(BinaryOp):
     """Concat expression.
@@ -967,11 +935,6 @@ class Concat(BinaryOp):
 
     def __init__(self, left: Expression, right: Expression, **kwargs):
         super().__init__("Concat", left, right, **kwargs)
-
-
-""" ----------------------------------------------------------------------- """
-""" Unary operators                                                         """
-""" ----------------------------------------------------------------------- """
 
 
 class UnaryOp(Expression):
@@ -1017,11 +980,6 @@ class ULNotOp(UnaryOp):
 
     def __init__(self, operand: Expression, **kwargs):
         super().__init__("ULNotOp", operand, **kwargs)
-
-
-""" ----------------------------------------------------------------------- """
-""" 3.4.7 – The Length Operator                                             """
-""" ----------------------------------------------------------------------- """
 
 
 class ULengthOP(UnaryOp):

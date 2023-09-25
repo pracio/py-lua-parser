@@ -1,12 +1,21 @@
-from antlr4 import InputStream, CommonTokenStream
-from luaparser.parser.LuaLexer import LuaLexer
-from luaparser.astnodes import *
-from luaparser import printers
-from luaparser.builder import Builder
-from luaparser.utils.visitor import *
-from antlr4.error.ErrorListener import ErrorListener
+# -*-coding:utf8-*-
+
 import json
 from typing import Generator
+from antlr4 import InputStream, CommonTokenStream
+from antlr4.error.ErrorListener import ErrorListener
+from luaparser.parser.LuaLexer import LuaLexer
+from luaparser.astnodes import (Assign, Block, Node, Chunk, Label,
+                                While, Do, If, ElseIf, Goto, Break,
+                                Return, Fornum, Forin, Call, Invoke,
+                                Function, LocalFunction, Method, Nil,
+                                TrueExpr, FalseExpr, Number, String,
+                                Table, Field, Dots, AnonymousFunction,
+                                BinaryOp, UnaryOp, Name, Index, Varargs,
+                                Repeat, SemiColon)
+from luaparser import printers
+from luaparser.builder import Builder
+from luaparser.utils.visitor import visitor
 
 
 def parse(source: str) -> Chunk:
@@ -51,9 +60,9 @@ class JSONEncoder(json.JSONEncoder):
             to_json = getattr(o, "to_json")
             if callable(to_json):
                 return to_json()
-
         except AttributeError:
-            return {k: v for k, v in o.__dict__.items() if not k.startswith("_")}
+            return {k: v for k, v in o.__dict__.items()
+                    if not k.startswith("_")}
 
 
 def to_pretty_json(root: Node) -> str:
@@ -79,7 +88,8 @@ class ASTVisitor:
 
                 # add childs
                 children = [
-                    attr for attr in node.__dict__.keys() if not attr.startswith("_")
+                    attr for attr in node.__dict__.keys()
+                    if not attr.startswith("_")
                 ]
                 for child in children:
                     node_stack.append(node.__dict__[child])
@@ -107,7 +117,8 @@ class ASTRecursiveVisitor:
 
             # visit all object public attributes:
             children = [
-                attr for attr in node.__dict__.keys() if not attr.startswith("_")
+                attr for attr in node.__dict__.keys()
+                if not attr.startswith("_")
             ]
             for child in children:
                 self.visit(node.__dict__[child])
@@ -142,82 +153,82 @@ class WalkVisitor:
         pass
 
     @visitor(float)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         pass
 
     @visitor(int)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         pass
 
     @visitor(list)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         for n in node:
             self.visit(n)
 
     @visitor(type(None))
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         pass
 
     @visitor(Chunk)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.body)
 
     @visitor(Block)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.body)
 
     @visitor(Assign)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.targets)
         self.visit(node.values)
 
     @visitor(While)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.test)
         self.visit(node.body)
 
     @visitor(Do)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.body)
 
     @visitor(If)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.test)
         self.visit(node.body)
         self.visit(node.orelse)
 
     @visitor(ElseIf)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.test)
         self.visit(node.body)
         self.visit(node.orelse)
 
     @visitor(Label)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Goto)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Break)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Return)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.values)
 
     @visitor(Fornum)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.target)
         self.visit(node.start)
@@ -226,41 +237,41 @@ class WalkVisitor:
         self.visit(node.body)
 
     @visitor(Forin)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.targets)
         self.visit(node.iter)
         self.visit(node.body)
 
     @visitor(Call)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.func)
         self.visit(node.args)
 
     @visitor(Invoke)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.source)
         self.visit(node.func)
         self.visit(node.args)
 
     @visitor(Function)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.name)
         self.visit(node.args)
         self.visit(node.body)
 
     @visitor(LocalFunction)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.name)
         self.visit(node.args)
         self.visit(node.body)
 
     @visitor(Method)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.source)
         self.visit(node.name)
@@ -268,80 +279,80 @@ class WalkVisitor:
         self.visit(node.body)
 
     @visitor(Nil)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(TrueExpr)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(FalseExpr)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Number)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(String)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Table)
-    def visit(self, node: Table):
+    def visit(self, node: Table):  # noqa: F811
         self._nodes.append(node)
         for field in node.fields:
             self.visit(field)
 
     @visitor(Field)
-    def visit(self, node: Field):
+    def visit(self, node: Field):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.key)
         self.visit(node.value)
 
     @visitor(Dots)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(AnonymousFunction)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.args)
         self.visit(node.body)
 
     @visitor(BinaryOp)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.left)
         self.visit(node.right)
 
     @visitor(UnaryOp)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.operand)
 
     @visitor(Name)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Index)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.value)
         self.visit(node.idx)
 
     @visitor(Varargs)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
     @visitor(Repeat)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
         self.visit(node.body)
         self.visit(node.test)
 
     @visitor(SemiColon)
-    def visit(self, node):
+    def visit(self, node):  # noqa: F811
         self._nodes.append(node)
 
 
@@ -350,16 +361,19 @@ class SyntaxException(Exception):
 
 
 class ParserErrorListener(ErrorListener):
+
     def syntaxError(self, recognizer, offending_symbol, line, column, msg, e):
         raise SyntaxException(str(line) + ":" + str(column) + ": " + str(msg))
 
     def reportAmbiguity(
-        self, recognizer, dfa, start_index, stop_index, exact, ambig_alts, configs
+        self, recognizer, dfa, start_index, stop_index, exact,
+        ambig_alts, configs
     ):
         pass
 
     def reportAttemptingFullContext(
-        self, recognizer, dfa, start_index, stop_index, conflicting_alts, configs
+        self, recognizer, dfa, start_index, stop_index,
+        conflicting_alts, configs
     ):
         pass
 

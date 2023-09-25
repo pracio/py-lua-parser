@@ -1,9 +1,13 @@
 *.pyc
-*.jar
 *.tokens
+*.interp
+__pycache__
 .idea
 build
 dist
 luaparser.egg-info
 venv
 .venv
+.antlr
+LuaListener.py
+LuaParser.py
