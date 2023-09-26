@@ -1,3 +1,5 @@
+# -*-coding:utf8-*-
+
 import sys
 from optparse import OptionParser, OptionGroup
 import luaparser
@@ -78,8 +80,8 @@ def main():
                 content_file.write(output)
         else:
             print(output)
-    except SyntaxException as e:
-        print("error: " + str(e))
+    except SyntaxException as error:
+        print(f"error: {error}")
 
 
 if __name__ == "__main__":
